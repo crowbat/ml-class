@@ -24,12 +24,12 @@ from wandb.keras import WandbCallback
 
 wandb.init()
 wandb.config.latent_dim = 2
-wandb.config.labels = [str(i) for i in range(10)] #["Happy", "Sad"]
+wandb.config.labels = ["Happy", "Sad"] #[str(i) for i in range(10)] #["Happy", "Sad"]
 wandb.config.batch_size = 128
 wandb.config.epochs = 25
 wandb.config.conditional = True
 wandb.config.latent_vis = False
-wandb.config.dataset = "mnist"
+wandb.config.dataset = "emotions"
 
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]
 
@@ -140,12 +140,18 @@ def create_encoder(input_shape):
     '''
     encoder_input = layers.Input(shape=input_shape)
     label_input = layers.Input(shape=(len(wandb.config.labels),))
-    x = layers.Flatten()(encoder_input)
+    #x = layers.Flatten()(x)
     if wandb.config.conditional:
-        #x = layers.Lambda(concat_label, name="c")([encoder_input, label_input])
-        x = layers.concatenate([x, label_input], axis=-1)
+        x = layers.Lambda(concat_label, name="c")([encoder_input, label_input])
+        #x = layers.concatenate([x, label_input], axis=-1)
 
-    x = layers.Dense(512, activation="relu")(x)
+    x = layers.Conv2D(64, 3, activation="relu")(encoder_input)
+    x = layers.MaxPooling2D((2,2))(x)
+    x = layers.Conv2D(32, 3, activation="relu")(x)
+    x = layers.MaxPooling2D((2,2))(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Flatten()(x)
+    x = layers.Dense(128, activation="relu")(x)
     output = layers.Dense(wandb.config.latent_dim, activation="relu")(x)
 
     return Model([encoder_input, label_input], output, name='encoder')
@@ -162,8 +168,10 @@ def create_categorical_decoder():
     else:
         x = decoder_input
     x = layers.Dense(512, activation='relu')(x)
-    x = layers.Dense(img_size * img_size, activation='sigmoid')(x)
+    x = layers.Dense(img_size * img_size, activation='relu')(x)
     x = layers.Reshape((img_size, img_size, 1))(x)
+    x = layers.Conv2D(64, 3, activation="relu", padding="same")(x)
+    x = layers.Conv2D(1, 3, activation="sigmoid", padding="same")(x)
 
     return Model([decoder_input, label_input], x, name='decoder')
 

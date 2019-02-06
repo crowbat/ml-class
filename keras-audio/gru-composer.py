@@ -46,8 +46,10 @@ def get_notes():
     if os.path.exists("data/notes"):
         return pickle.load(open("data/notes", "rb"))
 
+    print("here1")
     for file in glob.glob("midi_songs/*.mid"):
         try:
+            print("here")
             midi = converter.parse(file)
         except TypeError:
             print("Invalid file %s" % file)
@@ -112,19 +114,20 @@ def prepare_sequences(notes, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(GRU(
+    model.add(CuDNNGRU(
         256,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         return_sequences=True
     ))
     model.add(Dropout(0.3))
-    model.add(GRU(128, return_sequences=True))
+    model.add(CuDNNGRU(128, return_sequences=True))
     model.add(Dropout(0.3))
-    model.add(GRU(64))
+    model.add(CuDNNGRU(64))
     model.add(Dense(256))
     model.add(Dropout(0.3))
     model.add(Dense(n_vocab))
-    model.add(Activation('softmax'))
+    model.add(Activation('sigmoid'))
+    model.load_weights("mozart.hdf5")
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     return model
@@ -163,7 +166,7 @@ class Midi(Callback):
 
             prediction = model.predict(prediction_input, verbose=0)
 
-            index = self.sample(prediction[0], temperature=0.5)#np.argmax
+            index = self.sample(prediction[0], temperature=1.0)#np.argmax
             result = int_to_note[index]
             prediction_output.append(result)
 
@@ -244,5 +247,6 @@ def train(model, network_input, network_output):
 
 
 if __name__ == '__main__':
-    ensure_midi("mario")
+    #ensure_midi("mario")
+    get_notes()
     train_network()

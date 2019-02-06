@@ -137,7 +137,10 @@ class GAN():
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
 
             # Train the generator (to have the discriminator label samples as valid)
+            print(self.discriminator.get_weights()[0])
             g_loss = self.combined.train_on_batch(noise, valid)
+            print(self.discriminator.get_weights()[0])
+            4/0
 
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:

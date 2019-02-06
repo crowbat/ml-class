@@ -3,8 +3,9 @@ import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.callbacks import Callback
-from keras.layers import Dropout, Flatten, Dense
+from keras.layers import Dropout, Flatten, Dense, BatchNormalization
 from keras.applications.vgg16 import VGG16, preprocess_input
+from keras import regularizers
 from dogcat_data import generators, get_nb_files
 import os
 import sys
@@ -83,11 +84,13 @@ def train_top_model():
 
     model = Sequential()
     model.add(Flatten(input_shape=X_train[0].shape))
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(256, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01)))
     model.add(Dropout(0.5))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(0.2))
     model.add(Dense(1, activation='sigmoid'))
 
-    model.compile(optimizer='rmsprop',
+    model.compile(optimizer='adam',
                   loss='binary_crossentropy', metrics=['accuracy'])
 
     class Images(Callback):
